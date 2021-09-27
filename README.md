@@ -2,6 +2,17 @@
 Permits to scrap any website using css selectors to perform commands and retrieve any text value, screenshot or downloaded file.    
 Note: You can use jQuery selectors to perform a js command (Auto added jQuery if site does not include)
 
+## Installation
+- Docker: `docker pull owencio/easy_scraper && docker run -it  -p 9494:9494 owencio/easy_scraper` ==> `Listening on http://0.0.0.0:9494`
+- Docker compose:
+  ```yaml
+    scraper:
+      image: owencio/easy_scraper
+      ports:
+        - 9494:9494
+  ```
+      
+
 ## API
 Easy Scraper supports for the following commands:
 - `string`: performs a js command
@@ -52,8 +63,10 @@ puts res.body  if res.is_a?(Net::HTTPSuccess) # should print image content
 
 
 ## Contributing
-
 Bug reports and pull requests are welcome on GitHub at https://github.com/owen2345/easy_scraper
+- Clone repository
+- Run app locally: `docker-compose up web` ==> `Listening on http://0.0.0.0:9494
+- Run test: `docker-compose up test`
 
 ## License
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).

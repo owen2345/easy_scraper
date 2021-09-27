@@ -18,4 +18,6 @@ RUN gem install bundler
 WORKDIR /app
 COPY . /app
 RUN bundle install
+EXPOSE 9494
+CMD ["ruby", "server.rb"]
 
