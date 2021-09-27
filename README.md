@@ -61,7 +61,8 @@ puts res.body  if res.is_a?(Net::HTTPSuccess) # should print image content
 - Text to search: `Hello world`
 - Decomposed commands: `["$('[name=\\'q\\\']').val('Hello world')", "$('input[name=\\\'btnK\\\']')[0].click()",{"kind":"screenshot"}]`
 - Visit in your browser `http://localhost:9494/?url=https%3A%2F%2Fwww.google.com%2F&commands=%5B%22%24%28%27%5Bname%3D%5C%5C%27q%5C%5C%5C%27%5D%27%29.val%28%27Hello%20world%27%29%22%2C%20%22%24%28%27input%5Bname%3D%5C%5C%5C%27btnK%5C%5C%5C%27%5D%27%29%5B0%5D.click%28%29%22%2C%7B%22kind%22%3A%22screenshot%22%7D%5D
-![Image 1](docs/img1.png)
+- Result:
+  ![Image 1](docs/img1.png)
 
 ### Sample 2 (Print google.com title)
 - Decomposed command: `return $('title').text()`
