@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  web: &web
+    build: .
+    command: sh -c 'ruby server.rb'
+    volumes:
+      - .:/app
+    ports:
+      - 9494:9494
+  test:
+    <<: *web
+    command: sh -c 'bundle exec rspec'
