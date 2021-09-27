@@ -36,6 +36,7 @@ Easy Scraper supports for the following commands:
 Note: It returns the value of the last command.
   
 ## Usage 
+The request can be done using GET or POST
 ```ruby
 require 'uri'
 require 'net/http'
@@ -55,10 +56,19 @@ puts res.body  if res.is_a?(Net::HTTPSuccess) # should print image content
 ```
 
 ## Example (using browser)
+### Sample 1
 - Page to scrap: `http://google.com`
 - Text to search: `Hello world`
 - Decomposed commands: `["$('[name=\\'q\\\']').val('Hello world')", "$('input[name=\\\'btnK\\\']')[0].click()",{"kind":"screenshot"}]`
 - Visit in your browser `http://localhost:9494/?url=https%3A%2F%2Fwww.google.com%2F&commands=%5B%22%24%28%27%5Bname%3D%5C%5C%27q%5C%5C%5C%27%5D%27%29.val%28%27Hello%20world%27%29%22%2C%20%22%24%28%27input%5Bname%3D%5C%5C%5C%27btnK%5C%5C%5C%27%5D%27%29%5B0%5D.click%28%29%22%2C%7B%22kind%22%3A%22screenshot%22%7D%5D
+![Image 1](docs/img1.png)
+
+### Sample 2 (Print google.com title)
+- Decomposed command: `return $('title').text()`
+- Visit in your browser `http://localhost:9494/?url=https%3A%2F%2Fwww.google.com%2F&commands=return%20%24%28%27title%27%29.text%28%29
+
+
+Note: GET method must pass url encoded values
 
 
 
