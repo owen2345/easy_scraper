@@ -15,13 +15,13 @@ Note: You can use jQuery selectors to perform a js command (Auto added jQuery if
 
 ## API
 Easy Scraper supports for the following commands:
-- `string`: performs a js command
+- `string`: performs a js command (include `return` if necessary, sample: `return $('title').text()`)
   `$('title').text()`
 - `sleep`: waits for some seconds before next command    
   `{ kind: 'sleep', value: 2 }`
-- `wait`: waits until some element(s) exist (raises timeout error after 180 seconds)    
-  `{ kind: 'wait', value: "$('#my_panel a.expected_link')" }`
-- `screenshot`: takes the screenshot of current page     
+- `wait`: waits until some element exist or selector is accomplished (raises timeout error after 180 seconds)    
+  `{ kind: 'wait', value: "#my_panel a.expected_link" }`
+- `screenshot`: takes the screenshot of current page and returns the image     
   `{ kind: 'screenshot' }`
 - `visit`: visits another url     
   `{ kind: 'visit', value: "http://another_url.com/" }`
