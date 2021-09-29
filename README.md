@@ -12,29 +12,6 @@ Note: You can use jQuery selectors to perform a js command (Auto added jQuery if
         - 9494:9494
   ```
       
-
-## API
-Easy Scraper supports for the following commands:
-- `string`: performs a js command (include `return` if necessary, sample: `return $('title').text()`)
-  `$('title').text()`
-- `sleep`: waits for some seconds before next command    
-  `{ kind: 'sleep', value: 2 }`
-- `wait`: waits until some element exist or selector is accomplished (raises timeout error after 180 seconds)    
-  `{ kind: 'wait', value: "#my_panel a.expected_link" }`
-- `screenshot`: takes the screenshot of current page and returns the image     
-  `{ kind: 'screenshot' }`
-- `visit`: visits another url     
-  `{ kind: 'visit', value: "http://another_url.com/" }`
-- `downloaded`: returns the last downloaded file     
-  `["$('#my_panel a.download_pdf')[0].click()", { kind: 'downloaded' }]`
-- `until`: retries until `command` returns some value    
-  * value: [String|Hash] Any command that returns a expected value
-  * commands: [Array] Array of commands to be performed before performing `value` for each iteration
-  * max: [Integer] Maximum iterations before raising Timeout
-  `{ kind: 'until', max: 100, value: "$('.my_link').innerText", commands: "$('#pagination a')[untilIndex].click()" }`
-
-Note: It returns the value of the last command.
-  
 ## Usage 
 The request can be done using GET or POST
 ```ruby
@@ -54,6 +31,28 @@ uri = URI('http://localhost:9494/')
 res = Net::HTTP.post_form(uri, url: 'http://my_website.com/signin', commands: commands) # can be GET or POST request
 puts res.body  if res.is_a?(Net::HTTPSuccess) # should print image content
 ```
+
+## API
+Easy Scraper supports for the following commands:
+- `string`: performs a js command (include `return` if necessary, sample: `return $('title').text()`)     
+  Sample: `$('title').text()`
+- `sleep`: waits for some seconds before next command    
+  Sample: `{ kind: 'sleep', value: 2 }`
+- `wait`: waits until some element exist or selector is accomplished (raises timeout error after 180 seconds)    
+  Sample: `{ kind: 'wait', value: "#my_panel a.expected_link" }`
+- `screenshot`: takes the screenshot of current page and returns the image     
+  Sample: `{ kind: 'screenshot' }`
+- `visit`: visits another url     
+  Sample: `{ kind: 'visit', value: "http://another_url.com/" }`
+- `downloaded`: returns the last downloaded file     
+  Sample: `["$('#my_panel a.download_pdf')[0].click()", { kind: 'downloaded' }]`
+- `until`: retries until `command` returns some value    
+  * value: [String|Hash] Any command that returns a expected value
+  * commands: [Array] Array of commands to be performed before performing `value` for each iteration
+  * max: [Integer] Maximum iterations before raising Timeout
+  Sample: `{ kind: 'until', max: 100, value: "return $('.my_link').text()", commands: "$('#pagination a')[untilIndex].click()" }`
+
+Note: It returns the value of the last command.
 
 ## Example (using browser)
 ### Sample 1
@@ -78,6 +77,7 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/owen23
 - Clone repository
 - Run app locally: `docker-compose up web` ==> `Listening on http://0.0.0.0:9494
 - Run test: `docker-compose up test`
+- Publish: `docker build -t owencio/easy_scraper . && docker push owencio/easy_scraper:latest`
 
 ## License
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
