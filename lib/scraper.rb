@@ -37,7 +37,7 @@ class Scraper
   # @param command (Hash)
   def eval_complex_command(command)
     case command['kind']
-    when 'sleep' then sleep command['value']
+    when 'sleep' then sleep command['value'].to_f
     when 'wait' then Selenium::WebDriver::Wait.new(timeout: 180).until { driver.find_element(:css, command['value']) }
     when 'screenshot' then capture_screenshot
     when 'visit' then driver.navigate.to(command['value'])
@@ -59,14 +59,15 @@ class Scraper
   #   @option commands [Array<String,Hash>]
   #   @option max [Integer, optional] Default 100 times
   def wait_until(command)
-    (command['max'] || 100).times.each do |index|
+    (command['max'] || 100).to_i.times.each do |index|
+      driver.execute_script("var untilIndex = #{index};")
+      value = eval_command(command['value'])
+      return value if value.to_s != ''
+
       Array(command['commands']).each do |sub_command|
         driver.execute_script("var untilIndex = #{index};")
         eval_command(sub_command)
       end
-      driver.execute_script("var untilIndex = #{index};")
-      value = eval_command(command['value'])
-      return value if value.to_s != ''
     end
     raise 'Timeout until'
   end
