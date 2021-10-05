@@ -1,19 +1,18 @@
 # frozen_string_literal: true
 
 require 'selenium-webdriver'
+require_relative './ext/array'
 class Scraper
   def initialize(url, js_commands, settings: {})
-    settings = { auto_download: true, session_id: nil, timeout: 180 }.merge(settings)
-    @auto_download = settings[:auto_download].to_s == 'true'
+    @settings = { session_id: nil, timeout: 180, logs: true }.merge(settings)
     @url = url
     @current_files = Dir.glob('/app/*')
     @js_commands = parsed_commands(js_commands)
-    @timeout = settings[:timeout]
     @session_id = settings[:session_id]
   end
 
   def self.drivers
-    @drivers = {}
+    @drivers ||= {}
   end
 
   def call
@@ -21,9 +20,11 @@ class Scraper
     @js_commands.map(&method(:eval_command)).last
   rescue
     path = screenshots_path("failed_#{Time.now.to_i}.png")
-    puts "Due to failure, screenshot was captured at: #{path}"
+    log "Due to failure, screenshot was captured at: #{path}"
     driver.save_screenshot(path)
     raise
+  ensure # auto remove downloaded files
+    (Dir.glob('/app/*') - @current_files).each { |f_path| File.delete(f_path) }
   end
 
   private
@@ -33,7 +34,7 @@ class Scraper
   #   @option value (String)
   def eval_command(command)
     include_jquery
-    puts "Running.......... #{command}:::#{command.class}"
+    log "Running.......... #{command}:::#{command.class}"
     if command.is_a?(Hash)
       eval_complex_command(command.transform_keys(&:to_s))
     else
@@ -45,7 +46,7 @@ class Scraper
   def eval_complex_command(command)
     case command['kind']
     when 'sleep' then sleep command['value'].to_f
-    when 'wait' then until_timeout { driver.execute_script(command['value']) }
+    when 'wait' then run_wait_cmd(command)
     when 'screenshot' then run_screenshot_cmd
     when 'visit' then driver.navigate.to(command['value'])
     when 'downloaded' then run_downloaded_cmd
@@ -55,19 +56,26 @@ class Scraper
     end
   end
 
+  def run_wait_cmd(command)
+    until_timeout do
+      res = driver.execute_script(command['value'])
+      print_command_result(command['value'], res)
+      res
+    end
+  end
+
   # @param commands [Array<command>]
   def run_values_cmd(commands)
-    values = commands.map do |command|
-      eval_command(command)
+    values = commands.map do |sub_commands|
+      Array.wrap(sub_commands).map { |command| eval_command(command) }.last
     end
-    values.map { |value| value.is_a?(Tempfile) ? Base64.encode64(value.read) : value }.to_json
+    values.map { |value| value.is_a?(Tempfile) ? Base64.encode64(File.read(value.path)) : value }.to_json
   end
 
   def run_if_cmd(command)
     result = driver.execute_script(command['value']).to_s
-    return unless result.empty?
-
-    run_values_cmd(command['commands'])
+    print_command_result(command['value'], result)
+    run_values_cmd(command['commands']) unless result.empty?
   end
 
   def run_downloaded_cmd
@@ -95,7 +103,7 @@ class Scraper
     value = eval_command(command['value'])
     return value if value.to_s != ''
 
-    Array(command['commands']).each do |sub_command|
+    Array.wrap(command['commands']).each do |sub_command|
       driver.execute_script("var untilIndex = #{index};")
       eval_command(sub_command)
     end
@@ -103,7 +111,7 @@ class Scraper
   end
 
   def until_timeout(&block)
-    Selenium::WebDriver::Wait.new(timeout: @timeout).until do
+    Selenium::WebDriver::Wait.new(timeout: @settings[:timeout]).until do
       block.call
     end
   end
@@ -118,7 +126,7 @@ class Scraper
     name = File.basename(path, File.extname(path))
     file = Tempfile.new([name, File.extname(path)])
     file.write(File.read(path))
-    File.delete(path)
+    # File.delete(path)
     file.rewind
     file.close
     file
@@ -138,8 +146,8 @@ class Scraper
     return @driver if @driver
 
     drivers = self.class.drivers # TODO: add session expiration
-    drivers[@session_id] = new_driver if @session_id && !drivers[@session_id]
-    @driver = drivers[@session_id] || new_driver
+    self.class.drivers[@session_id] = new_driver if @session_id && !drivers[@session_id]
+    @driver = self.class.drivers[@session_id] || new_driver
   end
 
 
@@ -163,7 +171,7 @@ class Scraper
         default_directory: downloads_path # not working with current version of chrome
       },
       plugins: {
-        'always_open_pdf_externally' => @auto_download
+        'always_open_pdf_externally' => true
       }
     }
   end
@@ -171,7 +179,7 @@ class Scraper
   def parsed_commands(commands)
     print_html = 'return document.getElementsByTagName(\'html\')[0].outerHTML;'
     commands = commands.is_a?(String) ? (JSON.parse(commands) rescue commands) : commands
-    Array(commands || print_html)
+    Array.wrap(commands || print_html)
   end
 
   def screenshots_path(filename = nil)
@@ -183,5 +191,14 @@ class Scraper
 
   def downloads_path
     '/app/downloads/'
+  end
+
+  def print_command_result(command, result)
+    result = result.is_a?(Tempfile) ? result.path : result
+    log "====== result for: #{command}: #{result}"
+  end
+
+  def log(msg)
+    puts msg if @settings[:logs]
   end
 end
