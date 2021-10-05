@@ -2,20 +2,27 @@
 
 require 'selenium-webdriver'
 class Scraper
-  def initialize(url, js_commands)
+  def initialize(url, js_commands, settings: {})
+    settings = { auto_download: true, session_id: nil, timeout: 180 }.merge(settings)
+    @auto_download = settings[:auto_download].to_s == 'true'
     @url = url
     @current_files = Dir.glob('/app/*')
-    print_html = 'return document.getElementsByTagName(\'html\')[0].outerHTML;'
-    js_commands = js_commands.is_a?(String) ? (JSON.parse(js_commands) rescue js_commands) : js_commands
-    @js_commands = Array(js_commands || print_html)
+    @js_commands = parsed_commands(js_commands)
+    @timeout = settings[:timeout]
+    @session_id = settings[:session_id]
+  end
+
+  def self.drivers
+    @drivers = {}
   end
 
   def call
     driver.navigate.to @url
-    driver.manage.window.size = Selenium::WebDriver::Dimension.new(2024, 1024)
     @js_commands.map(&method(:eval_command)).last
   rescue
-    driver.save_screenshot(screenshots_path("failed_#{Time.now.to_i}.png"))
+    path = screenshots_path("failed_#{Time.now.to_i}.png")
+    puts "Due to failure, screenshot was captured at: #{path}"
+    driver.save_screenshot(path)
     raise
   end
 
@@ -38,15 +45,32 @@ class Scraper
   def eval_complex_command(command)
     case command['kind']
     when 'sleep' then sleep command['value'].to_f
-    when 'wait' then Selenium::WebDriver::Wait.new(timeout: 180).until { driver.find_element(:css, command['value']) }
-    when 'screenshot' then capture_screenshot
+    when 'wait' then until_timeout { driver.execute_script(command['value']) }
+    when 'screenshot' then run_screenshot_cmd
     when 'visit' then driver.navigate.to(command['value'])
-    when 'downloaded' then render_downloaded
-    when 'until' then wait_until(command)
+    when 'downloaded' then run_downloaded_cmd
+    when 'until' then run_until_cmd(command)
+    when 'values' then run_values_cmd(command['value'])
+    when 'run_if' then run_if_cmd(command)
     end
   end
 
-  def render_downloaded
+  # @param commands [Array<command>]
+  def run_values_cmd(commands)
+    values = commands.map do |command|
+      eval_command(command)
+    end
+    values.map { |value| value.is_a?(Tempfile) ? Base64.encode64(value.read) : value }.to_json
+  end
+
+  def run_if_cmd(command)
+    result = driver.execute_script(command['value']).to_s
+    return unless result.empty?
+
+    run_values_cmd(command['commands'])
+  end
+
+  def run_downloaded_cmd
     recent_files = Dir.glob('/app/*') - @current_files
     recent_path = recent_files.max_by { |f| File.mtime(f) }
     raise 'No download found' unless recent_path
@@ -58,21 +82,33 @@ class Scraper
   #   @option value [String, Hash]
   #   @option commands [Array<String,Hash>]
   #   @option max [Integer, optional] Default 100 times
-  def wait_until(command)
+  def run_until_cmd(command)
     (command['max'] || 100).to_i.times.each do |index|
-      driver.execute_script("var untilIndex = #{index};")
-      value = eval_command(command['value'])
-      return value if value.to_s != ''
-
-      Array(command['commands']).each do |sub_command|
-        driver.execute_script("var untilIndex = #{index};")
-        eval_command(sub_command)
-      end
+      res = check_until_value(command, index)
+      return res if res
     end
     raise 'Timeout until'
   end
 
-  def capture_screenshot
+  def check_until_value(command, index)
+    driver.execute_script("var untilIndex = #{index};")
+    value = eval_command(command['value'])
+    return value if value.to_s != ''
+
+    Array(command['commands']).each do |sub_command|
+      driver.execute_script("var untilIndex = #{index};")
+      eval_command(sub_command)
+    end
+    nil
+  end
+
+  def until_timeout(&block)
+    Selenium::WebDriver::Wait.new(timeout: @timeout).until do
+      block.call
+    end
+  end
+
+  def run_screenshot_cmd
     filename = screenshots_path("picture#{Time.now.to_i}.png")
     driver.save_screenshot(filename)
     render_file(filename)
@@ -94,20 +130,28 @@ class Scraper
     script.type = 'text/javascript';
     script.src = 'https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js';
     await script.onload;"
-    delay = driver.execute_script('return typeof jQuery') == 'undefined'
     driver.execute_script("if(typeof jQuery == 'undefined') { #{jquery} }")
-    sleep 2 if delay
+    until_timeout { driver.execute_script("return typeof jQuery == 'undefined' ? null : true") }
   end
 
   def driver
-    @driver ||= begin
-      args = ['--headless', '--disable-gpu', '--no-sandbox', '--disable-extensions', '--disable-dev-shm-usage']
-      options = Selenium::WebDriver::Chrome::Options.new(args: args, prefs: driver_prefs)
-      options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36')
-      caps = Selenium::WebDriver::Remote::Capabilities.new
-      caps['resolution'] = '1920x1080'
-      Selenium::WebDriver.for(:chrome, options: options, desired_capabilities: caps)
-    end
+    return @driver if @driver
+
+    drivers = self.class.drivers # TODO: add session expiration
+    drivers[@session_id] = new_driver if @session_id && !drivers[@session_id]
+    @driver = drivers[@session_id] || new_driver
+  end
+
+
+  def new_driver
+    args = ['--headless', '--disable-gpu', '--no-sandbox', '--disable-extensions', '--disable-dev-shm-usage']
+    options = Selenium::WebDriver::Chrome::Options.new(args: args, prefs: driver_prefs)
+    options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36')
+    caps = Selenium::WebDriver::Remote::Capabilities.new
+    caps['resolution'] = '1920x1080'
+    driver = Selenium::WebDriver.for(:chrome, options: options, desired_capabilities: caps)
+    driver.manage.window.size = Selenium::WebDriver::Dimension.new(2024, 1024)
+    driver
   end
 
   def driver_prefs # rubocop:disable Metrics/MethodLength
@@ -119,9 +163,15 @@ class Scraper
         default_directory: downloads_path # not working with current version of chrome
       },
       plugins: {
-        'always_open_pdf_externally' => true
+        'always_open_pdf_externally' => @auto_download
       }
     }
+  end
+
+  def parsed_commands(commands)
+    print_html = 'return document.getElementsByTagName(\'html\')[0].outerHTML;'
+    commands = commands.is_a?(String) ? (JSON.parse(commands) rescue commands) : commands
+    Array(commands || print_html)
   end
 
   def screenshots_path(filename = nil)

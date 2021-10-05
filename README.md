@@ -19,7 +19,7 @@ require 'uri'
 require 'net/http'
 
 commands = [
-  { 'kind' => 'wait', 'value' => '#login' }, # delay until #login exists, if not, timeout error (60 secs)
+  { 'kind' => 'wait', 'value' => '#login' }, # delay until #login exists, if not, timeout error
   "$('#loginEmail').val('my_username');", # Enter value to a field
   "$('#loginPassword').val('my_pass');", # Enter value to a field
   "$('#submit_sign_in').click()", # submit sign in form
@@ -49,7 +49,7 @@ Easy Scraper supports for the following commands:
 - `until`: retries until `command` returns some value    
   * value: [String|Hash] Any command that returns a expected value
   * commands: [Array] Array of commands to be performed before performing `value` for each iteration
-  * max: [Integer] Maximum iterations before raising Timeout
+  * max: [Integer] Maximum iterations before raising Timeout (Default 100)
   Sample: `{ kind: 'until', max: 100, value: "return $('.my_link').text()", commands: "$('#pagination a')[untilIndex].click()" }`
 
 Note: It returns the value of the last command.
