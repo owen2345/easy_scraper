@@ -33,24 +33,48 @@ puts res.body  if res.is_a?(Net::HTTPSuccess) # should print image content
 ```
 
 ## API
+
+### Params
+- `url`: (String) Url to be visited
+- `commands`: (Array) Array of commands
+- `session_id`: (String, default null) permit to keep open visited browser
+- `timeout`: (integer, default 180) default timeout when waiting for results
+- `logs`: (boolean, default true) permit to disable logs
+
+### Commands
 Easy Scraper supports for the following commands:
 - `string`: performs a js command (include `return` if necessary, sample: `return $('title').text()`)     
   Sample: `$('title').text()`
+
 - `sleep`: waits for some seconds before next command    
   Sample: `{ kind: 'sleep', value: 2 }`
+
 - `wait`: waits until some element exist or selector is accomplished (raises timeout error after 180 seconds)    
-  Sample: `{ kind: 'wait', value: "#my_panel a.expected_link" }`
+  Sample: `{ kind: 'wait', value: "return $('#my_panel a.expected_link')[0]" }`
+
 - `screenshot`: takes the screenshot of current page and returns the image     
   Sample: `{ kind: 'screenshot' }`
+
 - `visit`: visits another url     
   Sample: `{ kind: 'visit', value: "http://another_url.com/" }`
+
 - `downloaded`: returns the last downloaded file     
   Sample: `["$('#my_panel a.download_pdf')[0].click()", { kind: 'downloaded' }]`
+
+- `values`: process several commands and returns its values (JSON format). Returns the last value if multiple sub commands is provided         
+  Sample: `{ kind: 'values', value: ["$('#my_field').text()", ["$('#my_link').click()", "$('#my_field2').text()"]] }`    
+  Will return `['val 1', 'val 2']`     
+  Note: if one of the values is a file format, it will be parsed into base64 format, sample: `["res 1", "base64:...."]`
+
+- `run_if`: returns the last downloaded file     
+  Sample: `{ kind: 'run_if', value: "return $('#my_field')[0] ? nil : true", commands: ["$('#my_field').text()"] }`     
+  Commands will be preformed if `#my_field` does not exist  
+
 - `until`: retries until `command` returns some value    
   * value: [String|Hash] Any command that returns a expected value
   * commands: [Array] Array of commands to be performed before performing `value` for each iteration
   * max: [Integer] Maximum iterations before raising Timeout (Default 100)
-  Sample: `{ kind: 'until', max: 100, value: "return $('.my_link').text()", commands: "$('#pagination a')[untilIndex].click()" }`
+  Sample: `{ kind: 'until', max: 100, value: "return $('.my_link').text()", commands: ["$('#pagination a')[untilIndex].click()"] }`
 
 Note: It returns the value of the last command.
 
