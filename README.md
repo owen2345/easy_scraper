@@ -19,7 +19,7 @@ require 'uri'
 require 'net/http'
 
 commands = [
-  { 'kind' => 'wait', 'value' => '#login' }, # delay until #login exists, if not, timeout error
+  { 'kind' => 'wait', 'value' => "return $('#login')" }, # delay until #login exists, if not, timeout error
   "$('#loginEmail').val('my_username');", # Enter value to a field
   "$('#loginPassword').val('my_pass');", # Enter value to a field
   "$('#submit_sign_in').click()", # submit sign in form
