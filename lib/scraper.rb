@@ -159,6 +159,7 @@ class Scraper
     caps['resolution'] = '1920x1080'
     driver = Selenium::WebDriver.for(:chrome, options: options, desired_capabilities: caps)
     driver.manage.window.size = Selenium::WebDriver::Dimension.new(2024, 1024)
+    driver.manage.timeouts.script_timeout = @settings[:timeout]
     driver
   end
 

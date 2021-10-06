@@ -14,6 +14,7 @@ RUN unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
 # set display port to avoid crash
 ENV DISPLAY=:99
 
+ENV RACK_ENV=production
 RUN gem install bundler
 WORKDIR /app
 COPY . /app
