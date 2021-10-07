@@ -16,18 +16,23 @@ class Scraper
   end
 
   def call
+    log "Visiting to #{@url}"
     driver.navigate.to @url
     @js_commands.map(&method(:eval_command)).last
   rescue
-    path = screenshots_path("failed_#{Time.now.to_i}.png")
-    log "Due to failure, screenshot was captured at: #{path}"
-    driver.save_screenshot(path)
+    capture_failed_screenshot
     raise
   ensure # auto remove downloaded files
     (Dir.glob('/app/*') - @current_files).each { |f_path| File.delete(f_path) }
   end
 
   private
+
+  def capture_failed_screenshot
+    path = screenshots_path("failed_#{Time.now.to_i}.png")
+    log "Due to failure, screenshot was captured at: #{path}"
+    driver.save_screenshot(path)
+  end
 
   # @param command(String, Hash)
   #   @option kind (screenshot|sleep|wait)
@@ -180,7 +185,8 @@ class Scraper
   def parsed_commands(commands)
     print_html = 'return document.getElementsByTagName(\'html\')[0].outerHTML;'
     commands = commands.is_a?(String) ? (JSON.parse(commands) rescue commands) : commands
-    Array.wrap(commands || print_html)
+    res = Array.wrap(commands)
+    res.empty? ? [print_html] : res
   end
 
   def screenshots_path(filename = nil)
