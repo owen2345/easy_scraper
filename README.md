@@ -76,6 +76,9 @@ Easy Scraper supports for the following commands:
   * max: [Integer] Maximum iterations before raising Timeout (Default 100)
   Sample: `{ kind: 'until', max: 100, value: "return $('.my_link').text()", commands: ["$('#pagination a')[untilIndex].click()"] }`
 
+- `jquery`: adds jquery to the page for easier js selectors (by default added the first page visited)     
+  Sample: `{ kind: 'jquery' }`
+
 Note: It returns the value of the last command.
 
 ## Example (using browser)

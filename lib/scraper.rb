@@ -16,7 +16,7 @@ class Scraper
   end
 
   def call
-    log "Visiting to #{@url}"
+    log "Navigating to #{@url}"
     driver.navigate.to @url
     @js_commands.map(&method(:eval_command)).last
   rescue
@@ -58,6 +58,7 @@ class Scraper
     when 'until' then run_until_cmd(command)
     when 'values' then run_values_cmd(command['value'])
     when 'run_if' then run_if_cmd(command)
+    when 'jquery' then include_jquery(force: true)
     end
   end
 
@@ -131,20 +132,23 @@ class Scraper
     name = File.basename(path, File.extname(path))
     file = Tempfile.new([name, File.extname(path)])
     file.write(File.read(path))
-    # File.delete(path)
+    File.delete(path)
     file.rewind
     file.close
     file
   end
 
-  def include_jquery
+  def include_jquery(force: false)
     jquery = "let script = document.createElement('script');
     document.head.appendChild(script);
     script.type = 'text/javascript';
     script.src = 'https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js';
     await script.onload;"
-    driver.execute_script("if(typeof jQuery == 'undefined') { #{jquery} }")
-    until_timeout { driver.execute_script("return typeof jQuery == 'undefined' ? null : true") }
+    if force
+      driver.execute_script(jquery)
+    else
+      driver.execute_script("if(typeof jQuery == 'undefined') { #{jquery} }")
+    end
   end
 
   def driver
@@ -183,7 +187,7 @@ class Scraper
   end
 
   def parsed_commands(commands)
-    print_html = 'return document.getElementsByTagName(\'html\')[0].outerHTML;'
+    print_html = 'return document.body.innerHTML;'
     commands = commands.is_a?(String) ? (JSON.parse(commands) rescue commands) : commands
     res = Array.wrap(commands)
     res.empty? ? [print_html] : res
