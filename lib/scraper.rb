@@ -23,7 +23,7 @@ class Scraper
     capture_failed_screenshot
     raise
   ensure # auto remove downloaded files
-    (Dir.glob('/app/*') - @current_files).each { |f_path| File.delete(f_path) unless File.directory?(f_path) }
+    (Dir.glob('/app/*.pdf') - @current_files).each { |f_path| File.delete(f_path) }
   end
 
   private
