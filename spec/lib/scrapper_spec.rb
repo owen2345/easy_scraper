@@ -26,7 +26,7 @@ RSpec.describe Scraper do
     end
 
     it 'defines a standard window size' do
-      expect(driver.manage.window).to receive(:size=)
+      expect(Selenium::WebDriver::Dimension).to receive(:new).and_call_original
     end
   end
 
@@ -52,9 +52,9 @@ RSpec.describe Scraper do
       end
 
       it 'performs :wait command' do
-        cmd = { kind: 'wait', value: '#my_panel .my_item' }
+        cmd = { kind: 'wait', value: "return $('#my_panel .my_item')" }
         inst.instance_variable_set(:@js_commands, [cmd])
-        expect(driver).to receive(:find_element).with(:css, cmd[:value]).and_return('found')
+        expect(driver).to receive(:execute_script).with(cmd[:value])
         inst.call
       end
 
@@ -90,10 +90,39 @@ RSpec.describe Scraper do
         inst.call
       end
 
+      describe 'when :run_if command' do
+        let(:sub_command) { 'some command' }
+
+        it 'performs command if value returns some value' do
+          cmd = { kind: 'run_if', value: "return 'some value' ", commands: [sub_command] }
+          inst.instance_variable_set(:@js_commands, [cmd])
+          expect(driver).to receive(:execute_script).with(cmd[:value])
+          inst.call
+        end
+
+        it 'does not perform command if value returns empty value' do
+          cmd = { kind: 'run_if', value: '', commands: [sub_command] }
+          inst.instance_variable_set(:@js_commands, [cmd])
+          expect(driver).not_to receive(:execute_script).with(cmd[:value])
+          inst.call
+        end
+      end
+
+      describe 'when :values command' do
+        it 'returns a json of multiple values' do
+          sub_command1 = "return 'val1'"
+          sub_command2 = "return 'val2'"
+          cmd = { kind: 'values', value: [sub_command1, sub_command2] }
+          inst.instance_variable_set(:@js_commands, [cmd])
+          res = inst.call
+          expect([sub_command1, sub_command2].to_json).to eq(res)
+        end
+      end
+
       describe 'when :until command' do
         it 'performs the command' do
           value = '$(\'.my_link\').innerText'
-          commands = ['$$(\'#pagination a.page\')[untilIndex].click()']
+          commands = ['$(\'#pagination a.page\')[untilIndex].click()']
           cmd = { kind: 'until', max: 3, value: value, commands: commands }
           inst.instance_variable_set(:@js_commands, [cmd])
           allow(driver).to receive(:execute_script).with(value).and_return('')
