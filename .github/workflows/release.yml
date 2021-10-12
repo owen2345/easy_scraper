@@ -22,6 +22,11 @@ jobs:
         run: echo "::set-output name=previous_tag::$(git describe --abbrev=0 --tags `git rev-list --tags --skip=1 --max-count=1`)"
         id: tag_checker
 
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
       - name: Generate Changelog
         uses: scottbrenner/generate-changelog-action@master
         id: Changelog
