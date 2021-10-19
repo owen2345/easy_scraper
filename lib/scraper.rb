@@ -148,6 +148,7 @@ class Scraper
     await script.onload;"
     if force
       driver.execute_script(jquery)
+      sleep 1
     else
       driver.execute_script("if(typeof jQuery == 'undefined') { #{jquery} }")
     end
