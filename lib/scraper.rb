@@ -24,6 +24,7 @@ class Scraper
     raise
   ensure # auto remove downloaded files
     (Dir.glob('/app/*.pdf') - @current_files).each { |f_path| File.delete(f_path) }
+    driver.quit unless @session_id
   end
 
   private
