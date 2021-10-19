@@ -9,6 +9,7 @@ class Scraper
     @current_files = Dir.glob('/app/*')
     @js_commands = parsed_commands(js_commands)
     @session_id = settings[:session_id]
+    @process_id = "#{Time.current.to_i}-#{rand(1000)}"
   end
 
   def self.drivers
@@ -211,6 +212,6 @@ class Scraper
   end
 
   def log(msg)
-    puts msg if @settings[:logs]
+    puts "#{@process_id}: #{msg}" if @settings[:logs]
   end
 end
