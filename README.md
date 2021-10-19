@@ -104,7 +104,7 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/owen23
 - Clone repository
 - Run app locally: `docker-compose up web` ==> `Listening on http://0.0.0.0:9494
 - Run test: `docker-compose up test`
-- Publish: `docker build -t owencio/easy_scraper . && docker push owencio/easy_scraper:latest`
+- Publish: `docker build -t owencio/easy_scraper:0.5 . && docker push owencio/easy_scraper:0.5 && docker push owencio/easy_scraper:latest`
 
 ## License
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).

@@ -119,7 +119,7 @@ class Scraper
   end
 
   def until_timeout(&block)
-    Selenium::WebDriver::Wait.new(timeout: @settings[:timeout]).until do
+    Selenium::WebDriver::Wait.new(timeout: @settings[:timeout].to_i).until do
       block.call
     end
   end
@@ -170,7 +170,7 @@ class Scraper
     caps['resolution'] = '1920x1080'
     driver = Selenium::WebDriver.for(:chrome, options: options, desired_capabilities: caps)
     driver.manage.window.size = Selenium::WebDriver::Dimension.new(2024, 1024)
-    driver.manage.timeouts.script_timeout = @settings[:timeout]
+    driver.manage.timeouts.script_timeout = @settings[:timeout].to_i
     driver
   end
 
