@@ -1,0 +1,83 @@
+on:
+  pull_request:
+    branches:
+      - 'release/**'
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Enter release version name, sample: v7.3.0'
+
+name: Create Release2
+
+jobs:
+  env:
+    BUILD_RELEASE: ${{github.event.pull_request && github.event.pull_request.merged == 'true' && true || false}}
+  build:
+    runs-on: ubuntu-latest
+    env:
+      NEW_VERSION: ${{github.event.inputs && github.event.inputs.deploy_env || 'V7.3.2'}}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      - name: Detect last version
+        run: echo "::set-output name=current_version::$(git describe --abbrev=0 --tags `git rev-list --tags --skip=0 --max-count=1`)"
+        id: version_checker
+
+      # building release
+      - name: "Build Changelog"
+        id: build_changelog
+        uses: mikepenz/release-changelog-builder-action@v1
+        with:
+          configuration: ".github/workflows/configuration.json"
+          fromTag: ${{steps.version_checker.outputs.current_version}}
+          toTag: "HEAD"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Print changelog
+        run: echo "${{ steps.build_changelog.outputs.changelog }}"
+        continue-on-error: true
+      - name: Update changelog
+        run: echo "$(echo -e "Release $NEW_VERSION($(date +%F))\n$CHANGES\n"; cat CHANGELOG.md)" > CHANGELOG.md
+        if: env.BUILD_RELEASE
+        env:
+          CHANGES: ${{steps.build_changelog.outputs.changelog}}
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        if: false
+        #if: env.BUILD_RELEASE
+        with:
+          commit-message: Release ${{ env.NEW_VERSION }}
+          labels: release
+          title: "Release ${{ env.NEW_VERSION }}"
+          base: main
+          branch: "release/${{ env.NEW_VERSION }}"
+          delete-branch: true
+          body: |
+            # Release ${{ env.NEW_VERSION }}
+            ## Included Pull Requests
+            ${{ steps.build_changelog.outputs.changelog }}
+
+      # publishing release
+      - name: Create Release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ env.NEW_VERSION }}
+          release_name: Release ${{ env.NEW_VERSION }}
+          body: ${{ steps.Changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+        if: !env.BUILD_RELEASE
+      - name: create release
+        run: git tag -a ${{env.NEW_VERSION}} -m "Release ${{env.NEW_VERSION}}"
+        if: !env.BUILD_RELEASE

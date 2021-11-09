@@ -1,7 +1,7 @@
 on:
   push:
     tags: # triggered once a git tag is published
-      - '*'
+      - '000'
 
 name: Create Release
 
