@@ -1,22 +1,29 @@
 on:
   pull_request:
+    types: [closed]
     branches:
-      - 'release/**'
+      - main
+      - master
+
   workflow_dispatch:
     inputs:
       version_name:
         description: 'Enter release version name, sample: v7.3.0'
+        required: true
 
 name: Create Release2
 
 jobs:
-  env:
-    BUILD_RELEASE: ${{github.event.pull_request && github.event.pull_request.merged == 'true' && true || false}}
   build:
+    name: "Create release 2"
     runs-on: ubuntu-latest
+    if: github.event.inputs || (github.event.pull_request.merged && startsWith(github.head_ref, 'release/'))
     env:
-      NEW_VERSION: ${{github.event.inputs && github.event.inputs.deploy_env || 'V7.3.2'}}
+      BUILD_RELEASE: ${{github.event.inputs && true || false}}
+
     steps:
+      - name: Calculate new version
+        run: result=$(echo "${{github.event.inputs && github.event.inputs.version_name || github.head_ref}}" | sed "s/release\///") && echo "NEW_VERSION=$result" >> $GITHUB_ENV
       - name: Checkout code
         uses: actions/checkout@v2
         with:
@@ -52,8 +59,7 @@ jobs:
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3
-        if: false
-        #if: env.BUILD_RELEASE
+        if: env.BUILD_RELEASE
         with:
           commit-message: Release ${{ env.NEW_VERSION }}
           labels: release
@@ -77,7 +83,7 @@ jobs:
           body: ${{ steps.Changelog.outputs.changelog }}
           draft: false
           prerelease: false
-        if: !env.BUILD_RELEASE
+        if: env.BUILD_RELEASE == false
       - name: create release
         run: git tag -a ${{env.NEW_VERSION}} -m "Release ${{env.NEW_VERSION}}"
-        if: !env.BUILD_RELEASE
+        if: env.BUILD_RELEASE == false
