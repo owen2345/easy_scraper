@@ -17,6 +17,7 @@ ENV DISPLAY=:99
 # Gem puma dependencies
 RUN apt-get -qq -y install build-essential --fix-missing --no-install-recommends
 ENV RACK_ENV=production
+ENV DBUS_SESSION_BUS_ADDRESS="/dev/null"
 RUN gem install bundler
 WORKDIR /app
 COPY . /app

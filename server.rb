@@ -10,7 +10,8 @@ get('/') { run_scrapper }
 post('/') { run_scrapper }
 
 def run_scrapper
-  settings = params.slice(:session_id, :logs, :timeout).map{ |k, v| [k.to_sym, v] }.to_h
+  allowed_params = params.slice(:session_id, :logs, :timeout, :capture_error)
+  settings = allowed_params.map{ |k, v| [k.to_sym, v] }.to_h
   inst = Scraper.new(params[:url], params[:commands], settings: settings)
   res = inst.call
   res.is_a?(Tempfile) ? render_file(res) : res

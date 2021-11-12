@@ -3,7 +3,7 @@ version: '3'
 services:
   web: &web
     build: .
-    command: sh -c 'ruby server.rb'
+    command: sh -c 'bundle install && ruby server.rb'
     volumes:
       - .:/app
     ports:

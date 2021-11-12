@@ -3,8 +3,10 @@
 require 'selenium-webdriver'
 require_relative './ext/array'
 class Scraper
+  attr_accessor :settings, :js_commands
+
   def initialize(url, js_commands, settings: {})
-    @settings = { session_id: nil, timeout: 180, logs: true }.merge(settings)
+    @settings = { session_id: nil, timeout: 180, logs: true, capture_error: false }.merge(settings)
     @url = url
     @current_files = Dir.glob('/app/*')
     @js_commands = parsed_commands(js_commands)
@@ -21,7 +23,7 @@ class Scraper
     driver.navigate.to @url
     @js_commands.map(&method(:eval_command)).last
   rescue
-    capture_failed_screenshot
+    capture_failed_screenshot if @settings[:capture_error]
     raise
   ensure # auto remove downloaded files
     (Dir.glob('/app/*.pdf') - @current_files).each { |f_path| File.delete(f_path) }
@@ -31,8 +33,10 @@ class Scraper
   private
 
   def capture_failed_screenshot
-    path = screenshots_path("failed_#{Time.now.to_i}.png")
+    path = screenshots_path("failed_#{@process_id}.png")
+    html_path = screenshots_path("failed_#{@process_id}.html")
     log "Due to failure, screenshot was captured at: #{path}"
+    File.open(html_path, 'a+') { |f| f << driver.execute_script('return document.body.innerHTML;') }
     driver.save_screenshot(path)
   end
 
@@ -45,7 +49,7 @@ class Scraper
     if command.is_a?(Hash)
       eval_complex_command(command.transform_keys(&:to_s))
     else
-      driver.execute_script(command)
+      auto_retry { driver.execute_script(command) }
     end
   end
 
@@ -65,7 +69,7 @@ class Scraper
   end
 
   def run_wait_cmd(command)
-    until_timeout do
+    until_timeout(command['timeout']) do
       res = driver.execute_script(command['value'])
       print_command_result(command['value'], res)
       res
@@ -118,8 +122,8 @@ class Scraper
     nil
   end
 
-  def until_timeout(&block)
-    Selenium::WebDriver::Wait.new(timeout: @settings[:timeout].to_i).until do
+  def until_timeout(timeout = nil, &block)
+    Selenium::WebDriver::Wait.new(timeout: (timeout || @settings[:timeout]).to_i).until do
       block.call
     end
   end
@@ -210,6 +214,17 @@ class Scraper
   def print_command_result(command, result)
     result = result.is_a?(Tempfile) ? result.path : result
     log "====== result for: #{command}: #{result}"
+  end
+
+  def auto_retry(times: 2, &block)
+    block.call
+  rescue => e # rubocop:disable Style/RescueStandardError
+    @retry_times = (@retry_times || 0) + 1
+    (@retry_times = 0) && raise if @retry_times > times
+
+    sleep 1
+    log "Failed with: #{e.message}. Retrying..."
+    retry
   end
 
   def log(msg)

@@ -68,7 +68,7 @@ RSpec.describe Scraper do
 
       it 'returns captured images when :screenshot command' do
         cmd = { kind: 'screenshot' }
-        inst.instance_variable_set(:@js_commands, [cmd])
+        inst.js_commands = [cmd]
         expect_rendered_file(inst)
         inst.call
       end
