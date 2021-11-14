@@ -24,10 +24,6 @@ RSpec.describe Scraper do
     it 'navigates to the defined url' do
       expect(driver.navigate).to receive(:to).with(uri)
     end
-
-    it 'defines a standard window size' do
-      expect(Selenium::WebDriver::Dimension).to receive(:new).and_call_original
-    end
   end
 
   describe 'when running commands' do

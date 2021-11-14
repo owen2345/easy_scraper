@@ -1,21 +1,21 @@
 # frozen_string_literal: true
 
+require 'forwardable'
 require 'selenium-webdriver'
 require_relative './ext/array'
+require_relative './drivers_manager'
 class Scraper
-  attr_accessor :settings, :js_commands
+  extend Forwardable
+  def_delegators :@driver_manager, :driver_wrapper, :driver
+  attr_accessor :settings, :js_commands, :driver_manager
 
   def initialize(url, js_commands, settings: {})
     @settings = { session_id: nil, timeout: 180, logs: true, capture_error: false }.merge(settings)
     @url = url
     @current_files = Dir.glob('/app/*')
     @js_commands = parsed_commands(js_commands)
-    @session_id = settings[:session_id]
     @process_id = "#{Time.now.to_i}-#{rand(1000)}"
-  end
-
-  def self.drivers
-    @drivers ||= {}
+    @driver_manager = DriversManager.new(settings[:session_id], timeout: @settings[:timeout].to_i, process_id: @process_id)
   end
 
   def call
@@ -27,7 +27,7 @@ class Scraper
     raise
   ensure # auto remove downloaded files
     (Dir.glob('/app/*.pdf') - @current_files).each { |f_path| File.delete(f_path) }
-    driver.quit unless @session_id
+    driver_manager.quit_driver
   end
 
   private
@@ -158,41 +158,6 @@ class Scraper
     end
   end
 
-  def driver
-    return @driver if @driver
-
-    drivers = self.class.drivers # TODO: add session expiration
-    self.class.drivers[@session_id] = new_driver if @session_id && !drivers[@session_id]
-    @driver = self.class.drivers[@session_id] || new_driver
-  end
-
-
-  def new_driver
-    args = ['--headless', '--disable-gpu', '--no-sandbox', '--disable-extensions', '--disable-dev-shm-usage']
-    options = Selenium::WebDriver::Chrome::Options.new(args: args, prefs: driver_prefs)
-    options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36')
-    caps = Selenium::WebDriver::Remote::Capabilities.new
-    caps['resolution'] = '1920x1080'
-    driver = Selenium::WebDriver.for(:chrome, options: options, desired_capabilities: caps)
-    driver.manage.window.size = Selenium::WebDriver::Dimension.new(2024, 1024)
-    driver.manage.timeouts.script_timeout = @settings[:timeout].to_i
-    driver
-  end
-
-  def driver_prefs # rubocop:disable Metrics/MethodLength
-    {
-      download: {
-        prompt_for_download: false,
-        directory_upgrade: true,
-        extensions_to_open: '',
-        default_directory: downloads_path # not working with current version of chrome
-      },
-      plugins: {
-        'always_open_pdf_externally' => true
-      }
-    }
-  end
-
   def parsed_commands(commands)
     print_html = 'return document.body.innerHTML;'
     commands = commands.is_a?(String) ? (JSON.parse(commands) rescue commands) : commands
@@ -207,13 +172,9 @@ class Scraper
     path
   end
 
-  def downloads_path
-    '/app/downloads/'
-  end
-
   def print_command_result(command, result)
     result = result.is_a?(Tempfile) ? result.path : result
-    log "====== result for: #{command}: #{result}"
+    log "====== result for: #{command} ==> #{result}"
   end
 
   def auto_retry(times: 2, &block)
