@@ -3,6 +3,7 @@ version: '3'
 services:
   web: &web
     build: .
+    shm_size: '256mb'
     command: sh -c 'bundle install && ruby server.rb'
     volumes:
       - .:/app
