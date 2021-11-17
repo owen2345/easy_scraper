@@ -49,11 +49,15 @@ Easy Scraper supports for the following commands:
 - `sleep`: waits for some seconds before next command    
   Sample: `{ kind: 'sleep', value: 2 }`
 
-- `wait`: waits until some element exist or selector is accomplished (raises timeout error after 180 seconds)    
+- `wait`: waits until value is accomplished (raises timeout error after 180 seconds by default)        
+  * value: [String] Js code that  returns any value to stop waiting
+  * timeout: [Integer, optional] Defines the timeout in seconds
   Sample: `{ kind: 'wait', value: "return $('#my_panel a.expected_link')[0]" }`
 
-- `screenshot`: takes the screenshot of current page and returns the image     
-  Sample: `{ kind: 'screenshot' }`
+- `screenshot`: takes the screenshot of current page and returns the image         
+  * value: [String, optional] name of the screenshot     
+  * html: [Boolean, optional] if true saves the current html code     
+  Sample: `{ kind: 'screenshot', value: 'name_of_picture', html: true }`
 
 - `visit`: visits another url     
   Sample: `{ kind: 'visit', value: "http://another_url.com/" }`
@@ -104,7 +108,17 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/owen23
 - Clone repository
 - Run app locally: `docker-compose up web` ==> `Listening on http://0.0.0.0:9494
 - Run test: `docker-compose up test`
-- Publish: `docker build -t owencio/easy_scraper:0.5 . && docker push owencio/easy_scraper:0.5 && docker push owencio/easy_scraper:latest`
+- Publish: 
+```
+  docker build -t owencio/easy_scraper:0.9 . && docker push owencio/easy_scraper:0.9
+  docker tag owencio/easy_scraper:0.9 owencio/easy_scraper:latest 
+  docker push owencio/easy_scraper:latest
+```
+
+## TODO
+- parallel requests removes the wrong downloads
+- Fix failed tests
+- Add cookies documentation
 
 ## License
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
