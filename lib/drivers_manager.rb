@@ -6,10 +6,13 @@ class DriversManager
 
   DriverWrapper = Struct.new(:driver, :in_use, :process_id, keyword_init: true)
   # @param session_id (String, Nil)
-  def initialize(session_id, timeout:, process_id:)
+  # @param cookies (Nil, Hash<domain: String, url?: String, values: Hash<name:value>>)
+  def initialize(session_id, url:, timeout:, process_id:, cookies: nil)
     @session_id = session_id
     @timeout = timeout
     @process_id = process_id
+    @cookies = cookies
+    @url = (cookies && cookies['url']) || url
     driver_wrappers[session_id] ||= [] if session_id
   end
 
@@ -55,7 +58,10 @@ class DriversManager
   end
 
   def new_driver_manager
-    DriverWrapper.new(driver: new_driver, in_use: true, process_id: @process_id)
+    @new_driver_manager ||= begin
+      puts "--- opening new browser: #{@url}"
+      DriverWrapper.new(driver: new_driver, in_use: true, process_id: @process_id)
+    end
   end
 
   def new_driver
@@ -68,7 +74,15 @@ class DriversManager
     caps = Selenium::WebDriver::Remote::Capabilities.new
     driver = Selenium::WebDriver.for(:chrome, options: options, desired_capabilities: caps)
     driver.manage.timeouts.script_timeout = @timeout
+    add_cookies(driver) if @cookies
     driver
+  end
+
+  def add_cookies(driver)
+    driver.get(@url)
+    @cookies['values'].each do |k, v|
+      driver.manage.add_cookie(name: k, value: v, domain: @cookies['domain'], path: '/', secure: false)
+    end
   end
 
   def driver_prefs # rubocop:disable Metrics/MethodLength

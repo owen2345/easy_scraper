@@ -10,20 +10,24 @@ class Scraper
   attr_accessor :settings, :js_commands, :driver_manager
 
   def initialize(url, js_commands, settings: {})
-    @settings = { session_id: nil, timeout: 180, logs: true, capture_error: false }.merge(settings)
+    @settings = { session_id: nil, timeout: 180, logs: true, capture_error: false, cookies: nil }.merge(settings)
     @url = url
     @current_files = Dir.glob('/app/*')
     @js_commands = parsed_commands(js_commands)
     @process_id = "#{Time.now.to_i}-#{rand(1000)}"
-    @driver_manager = DriversManager.new(settings[:session_id], timeout: @settings[:timeout].to_i, process_id: @process_id)
+    manager_settings = {
+      timeout: @settings[:timeout].to_i, process_id: @process_id, cookies: @settings[:cookies], url: url
+    }
+    @driver_manager = DriversManager.new(settings[:session_id], manager_settings)
   end
 
   def call
-    log "Navigating to #{@url}"
+    driver_wrapper
+    log "Navigating to #{@url} with #{@js_commands.inspect}"
     driver.navigate.to @url
     @js_commands.map(&method(:eval_command)).last
-  rescue
-    capture_failed_screenshot if @settings[:capture_error]
+  rescue => e
+    capture_failed_screenshot(e.message)
     raise
   ensure # auto remove downloaded files
     (Dir.glob('/app/*.pdf') - @current_files).each { |f_path| File.delete(f_path) }
@@ -32,10 +36,10 @@ class Scraper
 
   private
 
-  def capture_failed_screenshot
-    path = screenshots_path("failed_#{@process_id}.png")
-    html_path = screenshots_path("failed_#{@process_id}.html")
-    log "Due to failure, screenshot was captured at: #{path}"
+  def capture_failed_screenshot(msg)
+    path = screenshots_path('failed.png')
+    html_path = screenshots_path('failed.html')
+    log "Failed: #{msg} (screenshot at: #{path})"
     File.open(html_path, 'a+') { |f| f << driver.execute_script('return document.body.innerHTML;') }
     driver.save_screenshot(path)
   end
@@ -58,7 +62,7 @@ class Scraper
     case command['kind']
     when 'sleep' then sleep command['value'].to_f
     when 'wait' then run_wait_cmd(command)
-    when 'screenshot' then run_screenshot_cmd
+    when 'screenshot' then run_screenshot_cmd(command)
     when 'visit' then driver.navigate.to(command['value'])
     when 'downloaded' then run_downloaded_cmd
     when 'until' then run_until_cmd(command)
@@ -90,12 +94,11 @@ class Scraper
     run_values_cmd(command['commands']) unless result.empty?
   end
 
+  # @return [File, Nil]
   def run_downloaded_cmd
     recent_files = Dir.glob('/app/*') - @current_files
     recent_path = recent_files.max_by { |f| File.mtime(f) }
-    raise 'No download found' unless recent_path
-
-    render_file(recent_path)
+    recent_path ? File.open(recent_path) : nil
   end
 
   # @param command (Hash)
@@ -116,7 +119,8 @@ class Scraper
     return value if value.to_s != ''
 
     Array.wrap(command['commands']).each do |sub_command|
-      driver.execute_script("var untilIndex = #{index};")
+      driver.execute_script("window['untilIndex'] = #{index};")
+      log("defined untilIndex = #{index} for => #{sub_command}")
       eval_command(sub_command)
     end
     nil
@@ -128,20 +132,16 @@ class Scraper
     end
   end
 
-  def run_screenshot_cmd
-    filename = screenshots_path("picture#{Time.now.to_i}.png")
+  # @param command (Hash<kind: String, value: String, html: Boolean>)
+  # @return [File]
+  def run_screenshot_cmd(command)
+    name = command['value'] || 'picture'
+    filename = screenshots_path("#{name}.png")
+    filename_html = screenshots_path("#{name}.html")
     driver.save_screenshot(filename)
-    render_file(filename)
-  end
-
-  def render_file(path)
-    name = File.basename(path, File.extname(path))
-    file = Tempfile.new([name, File.extname(path)])
-    file.write(File.read(path))
-    File.delete(path)
-    file.rewind
-    file.close
-    file
+    html_code = driver.execute_script('return document.body.innerHTML;')
+    File.open(filename_html, 'a+') { |f| f << html_code } if command['html']
+    File.open(filename)
   end
 
   def include_jquery(force: false)
@@ -168,7 +168,7 @@ class Scraper
   def screenshots_path(filename = nil)
     path = '/app/screenshots'
     FileUtils.mkdir_p(path) unless Dir.exist?(path)
-    path = "#{path}/#{filename}" if filename
+    path = "#{path}/#{@process_id}-#{filename}" if filename
     path
   end
 
