@@ -3,10 +3,11 @@
 require 'spec_helper'
 RSpec.describe DriversManager do
   let(:session_id) { '111' }
+  let(:url) { 'http://google.com' }
   before { described_class.instance_variable_set(:@driver_wrappers, {}) }
 
   describe 'when session id is provided' do
-    let(:inst) { described_class.new(session_id, timeout: 10, process_id: 1) }
+    let(:inst) { described_class.new(session_id, url: url, timeout: 10, process_id: 1) }
 
     it 'returns a new driver wrapper if no available found' do
       expect(inst).to receive(:new_driver).and_call_original
@@ -20,7 +21,7 @@ RSpec.describe DriversManager do
     end
 
     describe 'when there is an available wrapper' do
-      let!(:inst0) { described_class.new(session_id, timeout: 10, process_id: 2) }
+      let!(:inst0) { described_class.new(session_id, url: url, timeout: 10, process_id: 2) }
       let!(:wrapper0) { inst0.driver_wrapper }
       before { inst0.quit_driver }
 
@@ -62,7 +63,7 @@ RSpec.describe DriversManager do
   end
 
   describe 'when no session id' do
-    let(:inst) { described_class.new(nil, timeout: 10, process_id: 1) }
+    let(:inst) { described_class.new(nil, url: url, timeout: 10, process_id: 1) }
 
     it 'returns a new driver wrapper' do
       expect(inst).to receive(:new_driver).and_call_original
