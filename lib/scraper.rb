@@ -85,7 +85,7 @@ class Scraper
     values = commands.map do |sub_commands|
       Array.wrap(sub_commands).map { |command| eval_command(command) }.last
     end
-    values.map { |value| value.is_a?(Tempfile) ? Base64.encode64(File.read(value.path)) : value }.to_json
+    values.map { |value| value.is_a?(File) ? Base64.encode64(File.read(value.path)) : value }.to_json
   end
 
   def run_if_cmd(command)
@@ -173,7 +173,7 @@ class Scraper
   end
 
   def print_command_result(command, result)
-    result = result.is_a?(Tempfile) ? result.path : result
+    result = result.is_a?(File) ? result.path : result
     log "====== result for: #{command} ==> #{result}"
   end
 
