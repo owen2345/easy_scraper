@@ -34,12 +34,21 @@ class Scraper
     driver_manager.quit_driver
   end
 
+  def self.make_tempfile(path)
+    name = File.basename(path, File.extname(path))
+    file = Tempfile.new([name, File.extname(path)]) { |f| f << File.read(path) }
+    File.delete(path)
+    file.rewind
+    file.close
+    file
+  end
+
   private
 
   def capture_failed_screenshot(msg)
     path = screenshots_path('failed.png')
     html_path = screenshots_path('failed.html')
-    log "Failed: #{msg} (screenshot at: #{path})"
+    log("Failed: #{msg} (screenshot at: #{path})", force: true)
     File.open(html_path, 'a+') { |f| f << driver.execute_script('return document.body.innerHTML;') }
     driver.save_screenshot(path)
   end
@@ -72,12 +81,16 @@ class Scraper
     end
   end
 
+  #   @option timeout [Integer, optional] Timeout time before raising error
+  #   @option rescue [String, optional] Command to be executed when time out
   def run_wait_cmd(command)
     until_timeout(command['timeout']) do
       res = driver.execute_script(command['value'])
       print_command_result(command['value'], res)
       res
     end
+  rescue
+    command['rescue'] ? eval_command(command['rescue']) : raise
   end
 
   # @param commands [Array<command>]
@@ -85,7 +98,9 @@ class Scraper
     values = commands.map do |sub_commands|
       Array.wrap(sub_commands).map { |command| eval_command(command) }.last
     end
-    values.map { |value| value.is_a?(File) ? Base64.encode64(File.read(value.path)) : value }.to_json
+    values.map do |value|
+      [File, Tempfile].include?(value.class) ? Base64.encode64(File.read(value.path)) : value
+    end.to_json
   end
 
   def run_if_cmd(command)
@@ -94,23 +109,24 @@ class Scraper
     run_values_cmd(command['commands']) unless result.empty?
   end
 
-  # @return [File, Nil]
+  # @return [Tempfile, Nil]
   def run_downloaded_cmd
     recent_files = Dir.glob('/app/*') - @current_files
     recent_path = recent_files.max_by { |f| File.mtime(f) }
-    recent_path ? File.open(recent_path) : nil
+    recent_path ? self.class.make_tempfile(recent_path) : nil
   end
 
   # @param command (Hash)
   #   @option value [String, Hash]
   #   @option commands [Array<String,Hash>]
   #   @option max [Integer, optional] Default 100 times
+  #   @option rescue [String, optional] Command to be executed when time out
   def run_until_cmd(command)
     (command['max'] || 100).to_i.times.each do |index|
       res = check_until_value(command, index)
       return res if res
     end
-    raise 'Timeout until'
+    command['rescue'] ? eval_command(command['rescue']) : raise('Timeout until')
   end
 
   def check_until_value(command, index)
@@ -173,7 +189,7 @@ class Scraper
   end
 
   def print_command_result(command, result)
-    result = result.is_a?(File) ? result.path : result
+    result = result.respond_to?(:path) ? result.path : result
     log "====== result for: #{command} ==> #{result}"
   end
 
@@ -184,11 +200,11 @@ class Scraper
     (@retry_times = 0) && raise if @retry_times > times
 
     sleep 1
-    log "Failed with: #{e.message}. Retrying..."
+    log("Failed with: #{e.message}. Retrying...", force: true)
     retry
   end
 
-  def log(msg)
-    puts "#{@process_id}: #{msg}" if @settings[:logs]
+  def log(msg, force: false)
+    puts "#{@process_id}: #{msg}" if @settings[:logs] || force
   end
 end

@@ -14,16 +14,12 @@ def run_scrapper
   settings = allowed_params.map{ |k, v| [k.to_sym, v] }.to_h
   inst = Scraper.new(params[:url], params[:commands], settings: settings)
   res = inst.call
-  res.is_a?(File) ? render_file(res.path) : res
+  [File, Tempfile].include?(res.class) ? render_file(res) : res
 end
 
-# @param path [String]
-def render_file(path)
-  name = File.basename(path, File.extname(path))
-  file = Tempfile.new([name, File.extname(path)]) { |f| f << File.read(path) }
-  File.delete(path)
-  # file.rewind
-  # file.close
+def render_file(res_file)
+  path = res_file.path
+  file = res_file.is_a?(Tempfile) ? res_file : Scraper.make_tempfile(path)
   content_type :jpeg if file.path.to_s.end_with?('.png')
   send_file file.path
 end
