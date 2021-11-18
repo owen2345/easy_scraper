@@ -36,7 +36,8 @@ class Scraper
 
   def self.make_tempfile(path)
     name = File.basename(path, File.extname(path))
-    file = Tempfile.new([name, File.extname(path)]) { |f| f << File.read(path) }
+    file = Tempfile.new([name, File.extname(path)])
+    File.write(file.path, File.read(path))
     File.delete(path)
     file.rewind
     file.close
@@ -96,11 +97,10 @@ class Scraper
   # @param commands [Array<command>]
   def run_values_cmd(commands)
     values = commands.map do |sub_commands|
-      Array.wrap(sub_commands).map { |command| eval_command(command) }.last
+      value = Array.wrap(sub_commands).map { |command| eval_command(command) }.last
+      value.respond_to?(:path) ? Base64.encode64(File.read(value.path)) : value
     end
-    values.map do |value|
-      [File, Tempfile].include?(value.class) ? Base64.encode64(File.read(value.path)) : value
-    end.to_json
+    values.to_json
   end
 
   def run_if_cmd(command)
