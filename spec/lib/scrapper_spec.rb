@@ -54,19 +54,15 @@ RSpec.describe Scraper do
         inst.call
       end
 
-      it 'performs :screenshot command' do
-        cmd = { kind: 'screenshot' }
-        inst.instance_variable_set(:@js_commands, [cmd])
-        allow(inst).to receive(:render_file)
-        expect(driver).to receive(:save_screenshot)
-        inst.call
-      end
-
-      it 'returns captured images when :screenshot command' do
-        cmd = { kind: 'screenshot' }
-        inst.js_commands = [cmd]
-        expect_rendered_file(inst)
-        inst.call
+      describe 'when screenshot command' do
+        it 'returns captured image when :screenshot command' do
+          picture_name = 'sample_picture'
+          cmd = { kind: 'screenshot', value: picture_name }
+          inst.js_commands = [cmd]
+          res = inst.call
+          expect(res).to be_a(File)
+          expect(res.path).to include(picture_name)
+        end
       end
 
       it 'performs :visit command' do
@@ -77,29 +73,43 @@ RSpec.describe Scraper do
         inst.call
       end
 
-      it 'performs :downloaded command to render last downloaded file' do
-        cmd = { kind: 'downloaded' }
-        pdf_link = '$(\'#my_panel a.pdf_link\')[0].click()'
-        inst.instance_variable_set(:@js_commands, [pdf_link, cmd])
-        inst.instance_variable_set(:@current_files, [])
-        expect_rendered_file(inst)
-        inst.call
+      describe 'when downloaded command' do
+        let(:path) { '/app/a.pdf' }
+        let(:result) do
+          cmd = { kind: 'downloaded' }
+          pdf_link = '$(\'#my_panel a.pdf_link\')[0].click()'
+          inst.instance_variable_set(:@js_commands, [pdf_link, cmd])
+          inst.instance_variable_set(:@current_files, [])
+          allow(inst.send(:driver)).to receive(:execute_script).with(include('a.pdf_link')) do
+            File.open(path, 'w+') { |f| f << '' }
+          end
+          inst.call
+        end
+
+        it 'returns downloaded file as Tempfile to be auto deleted later' do
+          expect(result).to be_a(Tempfile)
+        end
+
+        it 'auto removes the original file' do
+          _res = result
+          expect(File.exist?(path)).to be_falsey
+        end
       end
 
       describe 'when :run_if command' do
         let(:sub_command) { 'some command' }
 
-        it 'performs command if value returns some value' do
+        it 'performs sub commands if value returns some value' do
           cmd = { kind: 'run_if', value: "return 'some value' ", commands: [sub_command] }
           inst.instance_variable_set(:@js_commands, [cmd])
-          expect(driver).to receive(:execute_script).with(cmd[:value])
+          expect(driver).to receive(:execute_script).with(sub_command)
           inst.call
         end
 
-        it 'does not perform command if value returns empty value' do
+        it 'does not perform sub commands if value returns empty value' do
           cmd = { kind: 'run_if', value: '', commands: [sub_command] }
           inst.instance_variable_set(:@js_commands, [cmd])
-          expect(driver).not_to receive(:execute_script).with(cmd[:value])
+          expect(driver).not_to receive(:execute_script).with(sub_command)
           inst.call
         end
       end
@@ -116,14 +126,30 @@ RSpec.describe Scraper do
       end
 
       describe 'when :until command' do
-        it 'performs the command' do
-          value = '$(\'.my_link\').innerText'
+        let(:cmd) { inst.instance_variable_get(:@js_commands).last }
+        let(:value_cmd) { '$(\'.my_link\').innerText' }
+        before do
           commands = ['$(\'#pagination a.page\')[untilIndex].click()']
-          cmd = { kind: 'until', max: 3, value: value, commands: commands }
+          cmd = { kind: 'until', max: 3, value: value_cmd, commands: commands }
           inst.instance_variable_set(:@js_commands, [cmd])
-          allow(driver).to receive(:execute_script).with(value).and_return('')
-          expect(driver).to receive(:execute_script).with(value).exactly(cmd[:max]).times
+          allow(driver).to receive(:execute_script).with(value_cmd).and_return('')
+        end
+
+        it 'performs the command the specified times as maximum before raising error' do
+          expect(driver).to receive(:execute_script).with(value_cmd).exactly(cmd[:max]).times
           inst.call rescue nil
+        end
+
+        it 'stops and returns value when the iteration finds a valid value' do
+          value = 'valid value'
+          cmd[:value] = "return '#{value}'"
+          expect(inst.call).to include(value)
+        end
+
+        it 'returns :rescue value when exceeded retries if provided' do
+          rescue_value = 'any value'
+          cmd[:rescue] = rescue_value
+          expect(inst.call).to eq(rescue_value)
         end
       end
     end

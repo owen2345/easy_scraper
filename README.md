@@ -37,9 +37,13 @@ puts res.body  if res.is_a?(Net::HTTPSuccess) # should print image content
 ### Params
 - `url`: (String) Url to be visited
 - `commands`: (Array) Array of commands
-- `session_id`: (String, default null) permit to keep open visited browser
+- `session_id`: (String, default null) permit to keep open visited browser and reuse it if available
 - `timeout`: (integer, default 180) default timeout when waiting for results
 - `logs`: (boolean, default true) permit to disable logs
+- `cookies`: (Hash, default nil)
+    * domain (String) cookies domain name
+    * url (String, default visited url) site url where to define the cookies (must match with domain)
+    * values (Hash) cookie values, sample: { "my_attr" => "my value" }
 
 ### Commands
 Easy Scraper supports for the following commands:
@@ -52,6 +56,7 @@ Easy Scraper supports for the following commands:
 - `wait`: waits until value is accomplished (raises timeout error after 180 seconds by default)        
   * value: [String] Js code that  returns any value to stop waiting
   * timeout: [Integer, optional] Defines the timeout in seconds
+  * rescue: [String, optional] Command to be executed when time out (Default raise error)
   Sample: `{ kind: 'wait', value: "return $('#my_panel a.expected_link')[0]" }`
 
 - `screenshot`: takes the screenshot of current page and returns the image         
@@ -77,7 +82,8 @@ Easy Scraper supports for the following commands:
 - `until`: retries until `command` returns some value    
   * value: [String|Hash] Any command that returns a expected value
   * commands: [Array] Array of commands to be performed before performing `value` for each iteration
-  * max: [Integer] Maximum iterations before raising Timeout (Default 100)
+  * max: [Integer, optional] Maximum iterations before raising Timeout (Default 100)
+  * rescue: [String, optional] Command to be executed when time out (Default raise error)
   Sample: `{ kind: 'until', max: 100, value: "return $('.my_link').text()", commands: ["$('#pagination a')[untilIndex].click()"] }`
 
 - `jquery`: adds jquery to the page for easier js selectors (by default added the first page visited)     
@@ -110,15 +116,14 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/owen23
 - Run test: `docker-compose up test`
 - Publish: 
 ```
-  docker build -t owencio/easy_scraper:0.9 . && docker push owencio/easy_scraper:0.9
-  docker tag owencio/easy_scraper:0.9 owencio/easy_scraper:latest 
+  docker build -t owencio/easy_scraper:0.10 . && docker push owencio/easy_scraper:0.10
+  docker tag owencio/easy_scraper:0.10 owencio/easy_scraper:latest 
   docker push owencio/easy_scraper:latest
 ```
 
 ## TODO
-- parallel requests removes the wrong downloads
-- Fix failed tests
-- Add cookies documentation
+- parallel requests pics and removes the wrong downloads
+- Download files to a specific folder and improve auto clean up
 
 ## License
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
