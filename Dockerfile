@@ -11,6 +11,10 @@ RUN apt-get install -yqq unzip
 RUN wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/`wget -qO-  chromedriver.storage.googleapis.com/LATEST_RELEASE`/chromedriver_linux64.zip
 RUN unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
 
+# Fix chrome zombie processes not closed when quitting driver
+RUN apt-get install tini
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
 # set display port to avoid crash
 ENV DISPLAY=:99
 
