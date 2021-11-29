@@ -4,7 +4,7 @@ services:
   web: &web
     build: .
     shm_size: '256mb'
-    command: sh -c 'bundle install && ruby server.rb'
+    command: sh -c 'bundle install && DISPLAY=:1 xvfb-run ruby server.rb'
     volumes:
       - .:/app
     ports:

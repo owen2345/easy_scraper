@@ -7,7 +7,7 @@ RUN apt-get -y update
 RUN apt-get install -y google-chrome-stable
 
 # install chromedriver
-RUN apt-get install -yqq unzip
+RUN apt-get install -yqq unzip xvfb
 RUN wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/`wget -qO-  chromedriver.storage.googleapis.com/LATEST_RELEASE`/chromedriver_linux64.zip
 RUN unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
 
@@ -27,5 +27,5 @@ WORKDIR /app
 COPY . /app
 RUN bundle install
 EXPOSE 9494
-CMD ["ruby", "server.rb"]
+CMD ["DISPLAY=:1 xvfb-run", "ruby", "server.rb"]
 
