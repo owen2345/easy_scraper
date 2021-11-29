@@ -12,7 +12,7 @@ class Scraper
   def initialize(url, js_commands, settings: {})
     @settings = { session_id: nil, timeout: 180, logs: true, capture_error: false, cookies: nil }.merge(settings)
     @url = url
-    @current_files = Dir.glob('/app/*')
+    @current_files = Dir.glob("#{downloads_folder}/*")
     @js_commands = parsed_commands(js_commands)
     @process_id = "#{Time.now.to_i}-#{rand(1000)}"
     manager_settings = {
@@ -30,7 +30,7 @@ class Scraper
     capture_failed_screenshot(e.message)
     raise
   ensure # auto remove downloaded files
-    (Dir.glob('/app/*.pdf') - @current_files).each { |f_path| File.delete(f_path) }
+    (Dir.glob("#{downloads_folder}/*.pdf") - @current_files).each { |f_path| File.delete(f_path) }
     driver_manager.quit_driver
   end
 
@@ -111,7 +111,7 @@ class Scraper
 
   # @return [Tempfile, Nil]
   def run_downloaded_cmd
-    recent_files = Dir.glob('/app/*') - @current_files
+    recent_files = Dir.glob("#{downloads_folder}/*") - @current_files
     recent_path = recent_files.max_by { |f| File.mtime(f) }
     recent_path ? self.class.make_tempfile(recent_path) : nil
   end
@@ -157,6 +157,7 @@ class Scraper
     driver.save_screenshot(filename)
     html_code = driver.execute_script('return document.body.innerHTML;')
     File.open(filename_html, 'a+') { |f| f << html_code } if command['html']
+    log("captured imaged was saved at: #{filename}")
     File.open(filename)
   end
 
@@ -206,5 +207,9 @@ class Scraper
 
   def log(msg, force: false)
     puts "#{@process_id}: #{msg}" if @settings[:logs] || force
+  end
+
+  def downloads_folder
+    '/root/Downloads/'
   end
 end
