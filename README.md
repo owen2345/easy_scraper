@@ -116,8 +116,8 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/owen23
 - Run test: `docker-compose up test`
 - Publish: 
 ```
-  docker build -t owencio/easy_scraper:0.10 . && docker push owencio/easy_scraper:0.10
-  docker tag owencio/easy_scraper:0.10 owencio/easy_scraper:latest 
+  docker build -t owencio/easy_scraper:0.11 . && docker push owencio/easy_scraper:0.11
+  docker tag owencio/easy_scraper:0.11 owencio/easy_scraper:latest 
   docker push owencio/easy_scraper:latest
 ```
 
