@@ -9,6 +9,7 @@ class Scraper
   def_delegators :@driver_manager, :driver_wrapper, :driver
   attr_accessor :settings, :js_commands, :driver_manager
 
+  # TODO: refactor settings vs driver settings and code style
   def initialize(url, js_commands, settings: {})
     @settings = { session_id: nil, timeout: 180, logs: true, capture_error: false, cookies: nil }.merge(settings)
     @url = url
@@ -16,7 +17,8 @@ class Scraper
     @js_commands = parsed_commands(js_commands)
     @process_id = "#{Time.now.to_i}-#{rand(1000)}"
     manager_settings = {
-      timeout: @settings[:timeout].to_i, process_id: @process_id, cookies: @settings[:cookies], url: url
+      timeout: @settings[:timeout].to_i, process_id: @process_id, cookies: @settings[:cookies],
+      url: url, settings: @settings[:driver_settings] || {}
     }
     @driver_manager = DriversManager.new(settings[:session_id], manager_settings)
   end
@@ -185,7 +187,7 @@ class Scraper
   def screenshots_path(filename = nil)
     path = '/app/screenshots'
     FileUtils.mkdir_p(path) unless Dir.exist?(path)
-    path = "#{path}/#{@process_id}-#{filename}" if filename
+    path = "#{path}/#{@process_id}-#{Time.now.to_i}-#{filename}" if filename
     path
   end
 

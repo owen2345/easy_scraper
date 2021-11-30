@@ -7,13 +7,15 @@ class DriversManager
   DriverWrapper = Struct.new(:driver, :in_use, :process_id, keyword_init: true)
   # @param session_id (String, Nil)
   # @param cookies (Nil, Hash<domain: String, url?: String, values: Hash<name:value>>)
-  def initialize(session_id, url:, timeout:, process_id:, cookies: nil)
+  # @param settings [Hash<driver_options:Array<String>>]
+  def initialize(session_id, url:, timeout:, process_id:, cookies: nil, settings: {})
     @session_id = session_id
     @timeout = timeout
     @process_id = process_id
     @cookies = cookies
     @url = (cookies && cookies['url']) || url
     driver_wrappers[session_id] ||= [] if session_id
+    @settings = settings
   end
 
   # @return [DriverWrapper]
@@ -71,6 +73,7 @@ class DriversManager
     ]
     options = Selenium::WebDriver::Chrome::Options.new(args: args, prefs: driver_prefs)
     options.add_argument('start-maximized')
+    (@settings['options'] || []).each { |v| options.add_argument(v) }
     caps = Selenium::WebDriver::Remote::Capabilities.new
     driver = Selenium::WebDriver.for(:chrome, options: options, desired_capabilities: caps)
     driver.manage.timeouts.script_timeout = @timeout
