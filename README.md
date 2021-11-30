@@ -40,6 +40,7 @@ puts res.body  if res.is_a?(Net::HTTPSuccess) # should print image content
 - `session_id`: (String, default null) permit to keep open visited browser and reuse it if available
 - `timeout`: (integer, default 180) default timeout when waiting for results
 - `logs`: (boolean, default true) permit to disable logs
+- `driver_settings`: (Hash<options: Array<String>>, default nil) permit to configure driver options, such as proxy address
 - `cookies`: (Hash, default nil)
     * domain (String) cookies domain name
     * url (String, default visited url) site url where to define the cookies (must match with domain)
@@ -116,8 +117,8 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/owen23
 - Run test: `docker-compose up test`
 - Publish: 
 ```
-  docker build -t owencio/easy_scraper:0.11 . && docker push owencio/easy_scraper:0.11
-  docker tag owencio/easy_scraper:0.11 owencio/easy_scraper:latest 
+  docker build -t owencio/easy_scraper:0.12 . && docker push owencio/easy_scraper:0.12
+  docker tag owencio/easy_scraper:0.12 owencio/easy_scraper:latest 
   docker push owencio/easy_scraper:latest
 ```
 
