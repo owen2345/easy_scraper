@@ -85,6 +85,7 @@ Easy Scraper supports for the following commands:
   * commands: [Array] Array of commands to be performed before performing `value` for each iteration
   * max: [Integer, optional] Maximum iterations before raising Timeout (Default 100)
   * rescue: [String, optional] Command to be executed when time out (Default raise error)
+  * stop_if: [String, optional] If this value is equal to `value`, then the iteration is stopped and returns all recorded values (By default it stops if `value` returns any value)
   Sample: `{ kind: 'until', max: 100, value: "return $('.my_link').text()", commands: ["$('#pagination a')[untilIndex].click()"] }`
 
 - `jquery`: adds jquery to the page for easier js selectors (by default added the first page visited)     

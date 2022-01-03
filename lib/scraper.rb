@@ -123,10 +123,15 @@ class Scraper
   #   @option commands [Array<String,Hash>]
   #   @option max [Integer, optional] Default 100 times
   #   @option rescue [String, optional] Command to be executed when time out
+  #   @option stop_if [String, optional] If this value is equal to `value`,
+  #     then the iteration is stopped (By default it stops if `value` returns any value)
   def run_until_cmd(command)
+    values = []
     (command['max'] || 100).to_i.times.each do |index|
       res = check_until_value(command, index)
-      return res if res
+      values << res
+      stoppable = command['stop_if']
+      return stoppable ? values : res if stoppable ? stoppable == res : res
     end
     command['rescue'] ? eval_command(command['rescue']) : raise('Timeout until')
   end

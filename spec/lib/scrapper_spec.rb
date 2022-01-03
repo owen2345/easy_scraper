@@ -146,6 +146,13 @@ RSpec.describe Scraper do
           expect(inst.call).to include(value)
         end
 
+        it 'stops if command value is equal to the provided stopper value' do
+          counter = 0
+          allow(driver).to receive(:execute_script).with(value_cmd) { counter += 1 }
+          cmd['stop_if'] = 3
+          expect(inst.call).to eq([1, 2, 3])
+        end
+
         it 'returns :rescue value when exceeded retries if provided' do
           rescue_value = 'any value'
           cmd[:rescue] = rescue_value
