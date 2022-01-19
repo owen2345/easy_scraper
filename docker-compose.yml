@@ -2,13 +2,15 @@ version: '3'
 
 services:
   web: &web
+    tty: true
+    stdin_open: true
     build: .
     shm_size: '256mb'
-    command: sh -c 'bundle install && DISPLAY=:1 xvfb-run ruby server.rb'
+    command: 'ruby server.rb'
     volumes:
       - .:/app
     ports:
       - 9494:9494
   test:
     <<: *web
-    command: sh -c 'bundle exec rspec'
+    command: 'bundle exec rspec'
