@@ -13,10 +13,10 @@ RUN unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
 
 # Fix chrome zombie processes not closed when quitting driver
 RUN apt-get install tini
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENV TINI_SUBREAPER=true
 
 # set display port to avoid crash
-ENV DISPLAY=:99
+ENV DISPLAY=:1
 
 # Gem puma dependencies
 RUN apt-get -qq -y install build-essential --fix-missing --no-install-recommends
@@ -27,5 +27,5 @@ WORKDIR /app
 COPY . /app
 RUN bundle install
 EXPOSE 9494
-CMD ["DISPLAY=:1 xvfb-run", "ruby", "server.rb"]
-
+ENTRYPOINT ["/bin/sh", "-c", "/usr/bin/tini -- xvfb-run $@", ""]
+CMD ["ruby server.rb"]
