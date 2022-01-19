@@ -16,7 +16,9 @@ module ScraperHelpers
   end
 
   def downloads_folder
-    '/root/Downloads/'
+    path = '/root/Downloads/'
+    Dir.mkdir(path) unless Dir.exist?(path)
+    path
   end
 
   # @param cookies (Hash<domain: String, url: String, values: Hash<key => value>>)
