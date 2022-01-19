@@ -124,6 +124,7 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/owen23
 ## TODO
 - parallel requests pics and removes the wrong downloads
 - Download files to a specific folder and improve auto clean up
+- Restore the ability to pass custom driver options, such as proxy settings
 
 ## License
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
