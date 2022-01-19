@@ -3,29 +3,25 @@
 require 'forwardable'
 require 'selenium-webdriver'
 require_relative './ext/array'
-require_relative './drivers_manager'
+require_relative './scraper_helpers'
 class Scraper
+  include ScraperHelpers
   extend Forwardable
-  def_delegators :@driver_manager, :driver_wrapper, :driver
-  attr_accessor :settings, :js_commands, :driver_manager
+  attr_accessor :settings, :js_commands
 
   # TODO: refactor settings vs driver settings and code style
   def initialize(url, js_commands, settings: {})
-    @settings = { session_id: nil, timeout: 180, logs: true, capture_error: false, cookies: nil }.merge(settings)
+    @settings = { session_id: nil, timeout: 180, logs: true, capture_error: false,
+                  cookies: nil, driver_options: [] }.merge(settings)
     @url = url
     @current_files = Dir.glob("#{downloads_folder}/*")
     @js_commands = parsed_commands(js_commands)
     @process_id = "#{Time.now.to_i}-#{rand(1000)}"
-    manager_settings = {
-      timeout: @settings[:timeout].to_i, process_id: @process_id, cookies: @settings[:cookies],
-      url: url, settings: @settings[:driver_settings] || {}
-    }
-    @driver_manager = DriversManager.new(settings[:session_id], manager_settings)
+    @session_id = settings[:session_id]
   end
 
   def call
-    driver_wrapper
-    log "Navigating to #{@url} with #{@js_commands.inspect}"
+    log "Navigating to (session: #{@session_id}) #{@url} with #{@js_commands.inspect}"
     driver.navigate.to @url
     @js_commands.map(&method(:eval_command)).last
   rescue => e
@@ -33,7 +29,11 @@ class Scraper
     raise
   ensure # auto remove downloaded files
     (Dir.glob("#{downloads_folder}/*.pdf") - @current_files).each { |f_path| File.delete(f_path) }
-    driver_manager.quit_driver
+    driver.quit unless @session_id
+  end
+
+  def self.drivers
+    @drivers ||= {}
   end
 
   def self.make_tempfile(path)
@@ -75,7 +75,7 @@ class Scraper
     when 'sleep' then sleep command['value'].to_f
     when 'wait' then run_wait_cmd(command)
     when 'screenshot' then run_screenshot_cmd(command)
-    when 'visit' then driver.navigate.to(command['value'])
+    when 'visit' then auto_retry(Net::ReadTimeout) { driver.navigate.to(command['value']) }
     when 'downloaded' then run_downloaded_cmd
     when 'until' then run_until_cmd(command)
     when 'values' then run_values_cmd(command['value'])
@@ -196,27 +196,30 @@ class Scraper
     path
   end
 
-  def print_command_result(command, result)
-    result = result.respond_to?(:path) ? result.path : result
-    log "====== result for: #{command} ==> #{result}"
-  end
-
-  def auto_retry(times: 2, &block)
-    block.call
-  rescue => e # rubocop:disable Style/RescueStandardError
-    @retry_times = (@retry_times || 0) + 1
-    (@retry_times = 0) && raise if @retry_times > times
-
-    sleep 1
-    log("Failed with: #{e.message}. Retrying...", force: true)
-    retry
-  end
-
   def log(msg, force: false)
     puts "#{@process_id}: #{msg}" if @settings[:logs] || force
   end
 
-  def downloads_folder
-    '/root/Downloads/'
+  def driver
+    return @driver if @driver
+
+    drivers = self.class.drivers # TODO: add session expiration
+    self.class.drivers[@session_id] = new_driver if @session_id && !drivers[@session_id]
+    @driver = self.class.drivers[@session_id] || new_driver
+  end
+
+  def new_driver
+    args = [
+      '--disable-gpu', '--no-sandbox', '--window-size=1280,1696', '--disable-extensions',
+      '--user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.79 Safari/537.36"'
+    ]
+    options = Selenium::WebDriver::Chrome::Options.new(args: args, prefs: driver_prefs)
+    options.add_argument('start-maximized')
+    @settings[:driver_options].each { |v| options.add_argument(v) }
+    caps = Selenium::WebDriver::Remote::Capabilities.new
+    driver = Selenium::WebDriver.for(:chrome, options: options, desired_capabilities: caps)
+    driver.manage.timeouts.script_timeout = @settings[:timeout].to_i
+    add_cookies(driver, @settings[:cookies], @url) if @settings[:cookies]
+    driver
   end
 end
