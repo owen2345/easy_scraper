@@ -74,7 +74,7 @@ RSpec.describe Scraper do
       end
 
       describe 'when downloaded command' do
-        let(:path) { '/app/a.pdf' }
+        let(:path) { File.join(inst.send(:downloads_folder), 'a.pdf') }
         let(:result) do
           cmd = { kind: 'downloaded' }
           pdf_link = '$(\'#my_panel a.pdf_link\')[0].click()'

@@ -23,7 +23,7 @@ class Scraper
 
   def call
     driver_wrapper
-    log "Navigating to #{@url} with #{@js_commands.inspect}"
+    log "Navigating to (session: #{@session_id}) #{@url} with #{@js_commands.inspect}"
     driver.navigate.to @url
     @js_commands.map(&method(:eval_command)).last
   rescue => e
@@ -73,7 +73,7 @@ class Scraper
     when 'sleep' then sleep command['value'].to_f
     when 'wait' then run_wait_cmd(command)
     when 'screenshot' then run_screenshot_cmd(command)
-    when 'visit' then driver.navigate.to(command['value'])
+    when 'visit' then auto_retry(Net::ReadTimeout) { driver.navigate.to(command['value']) }
     when 'downloaded' then run_downloaded_cmd
     when 'until' then run_until_cmd(command)
     when 'values' then run_values_cmd(command['value'])
@@ -194,11 +194,13 @@ class Scraper
     log "====== result for: #{command} ==> #{result}"
   end
 
-  def auto_retry(times: 2, &block)
+  def auto_retry(klass_name = nil, times: 2, &block)
     block.call
   rescue => e # rubocop:disable Style/RescueStandardError
+    do_raise = -> { (@retry_times = 0) && raise }
     @retry_times = (@retry_times || 0) + 1
-    (@retry_times = 0) && raise if @retry_times > times
+    unexpected_error = klass_name && !Array(klass_name).include?(e.class)
+    do_raise.call if unexpected_error || @retry_times > times
 
     sleep 1
     log("Failed with: #{e.message}. Retrying...", force: true)
@@ -210,6 +212,8 @@ class Scraper
   end
 
   def downloads_folder
-    '/root/Downloads/'
+    path = '/root/Downloads/'
+    Dir.mkdir(path) unless Dir.exist?(path)
+    path
   end
 end
