@@ -6,7 +6,7 @@ services:
     stdin_open: true
     build: .
     shm_size: '256mb'
-    command: 'ruby server.rb'
+    command: '--auto-servernum --server-num=1 ruby server.rb'
     volumes:
       - .:/app
     ports:
