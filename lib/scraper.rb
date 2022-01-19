@@ -215,7 +215,7 @@ class Scraper
     ]
     options = Selenium::WebDriver::Chrome::Options.new(args: args, prefs: driver_prefs)
     options.add_argument('start-maximized')
-    @settings[:driver_options].each { |v| options.add_argument(v) }
+    @settings[:driver_options].each { |v| options.add_argument(v) if v }
     caps = Selenium::WebDriver::Remote::Capabilities.new
     driver = Selenium::WebDriver.for(:chrome, options: options, desired_capabilities: caps)
     driver.manage.timeouts.script_timeout = @settings[:timeout].to_i
