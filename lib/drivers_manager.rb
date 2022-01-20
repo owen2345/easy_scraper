@@ -21,15 +21,20 @@ class DriversManager
     @driver_wrapper ||= session_id ? available_driver : new_driver_manager
   end
 
+  def close_wrapper
+    quit_driver(force: true)
+    @driver_wrapper = nil
+  end
+
   def driver
     driver_wrapper.driver
   end
 
-  def quit_driver
+  def quit_driver(force: false)
     driver_wrapper.in_use = false
-    end_driver = -> { driver.quit }
+    end_driver = -> { driver.quit rescue nil }
     return end_driver.call unless session_id
-    return if driver_wrappers[@session_id].size <= QTY_OPEN_SESSIONS
+    return if !force && driver_wrappers[@session_id].size <= QTY_OPEN_SESSIONS
 
     end_driver.call
     driver_wrappers[@session_id] = driver_wrappers[@session_id] - [driver_wrapper]

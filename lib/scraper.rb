@@ -27,7 +27,7 @@ class Scraper
     driver.navigate.to @url
     @js_commands.map(&method(:eval_command)).last
   rescue => e
-    capture_failed_screenshot(e.message)
+    retry_call?(e) ? retry : capture_failed_screenshot(e)
     raise
   ensure # auto remove downloaded files
     (Dir.glob("#{downloads_folder}/*.pdf") - @current_files).each { |f_path| File.delete(f_path) }
@@ -46,12 +46,13 @@ class Scraper
 
   private
 
-  def capture_failed_screenshot(msg)
+  def capture_failed_screenshot(error)
     path = screenshots_path('failed.png')
     html_path = screenshots_path('failed.html')
-    log("Failed: #{msg} (screenshot at: #{path})", force: true)
-    File.open(html_path, 'a+') { |f| f << driver.execute_script('return document.body.innerHTML;') }
-    driver.save_screenshot(path)
+    log("Failed: #{error.class.name}##{error.message} (screenshot at: #{path})", force: true)
+    log(error.backtrace, force: true)
+    File.open(html_path, 'a+') { |f| f << (driver.execute_script('return document.body.innerHTML;') rescue '') }
+    driver.save_screenshot(path) rescue nil
   end
 
   # @param command(String, Hash)
@@ -215,5 +216,15 @@ class Scraper
     path = '/root/Downloads/'
     Dir.mkdir(path) unless Dir.exist?(path)
     path
+  end
+
+  def retry_call?(error)
+    @qty_call_retry = (@qty_call_retry || 0) + 1
+    return unless error.message.include?('chrome not reachable')
+    return if @qty_call_retry > DriversManager::QTY_OPEN_SESSIONS
+
+    log("Retrying chrome error (#{@qty_call_retry}): #{error.class.name}-#{error.message}")
+    driver_manager.close_wrapper
+    true
   end
 end

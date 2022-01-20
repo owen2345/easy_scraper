@@ -24,6 +24,14 @@ RSpec.describe Scraper do
     it 'navigates to the defined url' do
       expect(driver.navigate).to receive(:to).with(uri)
     end
+
+    xit 'stops current driver and retries when chrome not reachable' do
+      pending 'fix test'
+      # msg = 'chrome not reachable'
+      # allow(inst).to receive(:call).and_call_original
+      # allow(driver).to receive(:navigate).twice.and_raise(Selenium::WebDriver::Error::WebDriverError, msg)
+      # expect(inst).to receive(:call).exactly(3).times
+    end
   end
 
   describe 'when running commands' do
