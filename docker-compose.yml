@@ -13,4 +13,4 @@ services:
       - 9494:9494
   test:
     <<: *web
-    command: 'bundle exec rspec'
+    command: '--auto-servernum --server-num=1 bundle exec rspec'
